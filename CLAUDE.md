@@ -10,6 +10,7 @@ A personal Spicetify CLI extension that applies known fixes for Spicetify bugs u
 | `scripts/manage.ps1` | Install, update, uninstall and link logic. Windows PowerShell 5.1, **ASCII-only**. |
 | `install.cmd`, `update.cmd`, `uninstall.cmd` | Double-clickable wrappers around `manage.ps1`. |
 | `README.md` | User docs, one section per fix. |
+| `LICENSE` | WTFPL v2, byte-identical to https://www.wtfpl.net/txt/copying/ (`.gitattributes` keeps it `-text`). |
 
 ## Adding a fix
 

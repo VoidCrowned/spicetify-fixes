@@ -324,3 +324,7 @@ That's not this repo's job.
 - No upstream issue: spicetify/cli currently only lets collaborators open issues.
 
 **Stops applying:** when Spotify's buttons already have the class, e.g. after the next Spicetify release (`not-needed`), or on any Spicetify version other than 2.45.3 (`untested-version`).
+
+## Licence
+
+Copyright © 2026 VoidCrowned. This program is free software. It comes without any warranty, to the extent permitted by applicable law. You can redistribute it and/or modify it under the terms of the Do What The Fuck You Want To Public License, Version 2, as published by Sam Hocevar. See [LICENSE](LICENSE) or http://www.wtfpl.net/ for more details.

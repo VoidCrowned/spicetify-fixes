@@ -3,6 +3,7 @@
  * Version: 1.0.0
  * Author:  VoidCrowned
  * Repo:    https://github.com/VoidCrowned/spicetify-fixes
+ * Licence: WTFPL v2, see LICENSE
  *
  * Applies known fixes for Spicetify bugs until Spicetify releases them.
  *
