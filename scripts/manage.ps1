@@ -364,38 +364,133 @@ function Invoke-Update {
     Write-Host 'Done.' -ForegroundColor Green
 }
 
+# Warns when the repo folder has work that isn't on GitHub yet.
+function Write-LocalChangesWarning {
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return }
+    if (-not (Test-Path -LiteralPath (Join-Path $RepoDir '.git'))) { return }
+    $changes = @(& git -C $RepoDir status --porcelain 2>$null)
+    $unpushed = 0
+    $count = (& git -C $RepoDir rev-list --count '@{u}..HEAD' 2>$null | Select-Object -First 1)
+    if ($LASTEXITCODE -eq 0) { [void][int]::TryParse([string]$count, [ref]$unpushed) }
+    if ($changes.Count -eq 0 -and $unpushed -eq 0) { return }
+    Write-Warn "This folder has local changes that aren't on GitHub."
+    foreach ($line in ($changes | Select-Object -First 10)) { Write-Info $line }
+    if ($changes.Count -gt 10) { Write-Info "... and $($changes.Count - 10) more." }
+    if ($unpushed -gt 0) { Write-Info "$unpushed commit(s) not pushed." }
+}
+
 function Invoke-Uninstall {
     Assert-NotAdmin 'uninstall.cmd'
 
-    Write-Step 1 3 "Removing $FileName from Spicetify's extensions ..."
-    Assert-Spicetify
-    $code = Invoke-Spicetify @('config', 'extensions', "$FileName-")
-    if ($code -ne 0) {
-        Stop-WithError "spicetify config failed (exit code $code)." "Run 'spicetify config extensions $FileName-' in a terminal and read the message."
+    Write-Host 'This removes spicetify-fixes from Spicetify:'
+    Write-Info "- takes $FileName off Spicetify's extensions list"
+    Write-Info "- deletes the installed $FileName (a link or a copy) from Spicetify's Extensions folder"
+    Write-Info '- runs spicetify apply, so Spotify restarts'
+    Write-Info "It doesn't touch Spicetify itself, other extensions, themes, or this folder."
+    Write-Host ''
+    if (-not (Read-YesNo 'Remove spicetify-fixes from Spicetify?' $true)) {
+        Write-Host ''
+        Write-Ok 'Stopped. Nothing was changed.'
+        return
     }
-    Write-Ok 'Removed from the list.'
 
-    Write-Step 2 3 "Removing $FileName ..."
-    $target = Join-Path (Get-ExtensionsDir) $FileName
+    Write-Step 1 5 'Checking Spicetify ...'
+    $hasSpicetify = Test-Spicetify
+    $extDir = $null
+    if ($hasSpicetify) {
+        Write-Ok 'Spicetify found.'
+        $extDir = Get-ExtensionsDir -NoCreate -Soft
+    } else {
+        Write-Warn "Spicetify was not found. Skipping its list and spicetify apply; only the file is removed."
+    }
+    if (-not $extDir) { $extDir = Get-DefaultExtensionsDir }
+    Write-Info "Extensions folder: $extDir"
+    $target = Join-Path $extDir $FileName
+
+    Write-Step 2 5 "Removing $FileName from Spicetify's list ..."
+    if (-not $hasSpicetify) {
+        Write-Info 'Skipped (Spicetify not found).'
+    } elseif (-not (Test-InSpicetifyList)) {
+        Write-Ok "Not in Spicetify's list, nothing to remove."
+    } else {
+        $code = Invoke-Spicetify @('config', 'extensions', "$FileName-")
+        if ($code -ne 0) {
+            Write-Err "spicetify config failed (exit code $code)."
+        } elseif (Test-InSpicetifyList) {
+            Write-Err "$FileName is still in Spicetify's list."
+        } else {
+            Write-Ok "Removed from Spicetify's list."
+        }
+    }
+
+    Write-Step 3 5 'Removing the installed file ...'
     $state = Get-TargetState $target
-    if ($state -eq 'our-link' -or $state -eq 'copy') {
+    if ($state -eq 'missing') {
+        Write-Ok "No $FileName in $extDir, nothing to remove."
+    } elseif ($state -eq 'folder') {
+        Write-Warn "Not ours (folder): $target is a folder. Left as it is."
+    } else {
+        if ($state -eq 'other-link') { Write-Info "It linked to another clone: $(Get-LinkTarget $target)" }
         try {
             Remove-Target $target
+            $label = if ($state -eq 'copy') { 'the old copy' } else { 'the link' }
+            Write-Ok "Removed $label $target"
         } catch {
-            Stop-WithError "Couldn't remove $target : $($_.Exception.Message)" 'Close Spotify, then double-click uninstall.cmd again.'
+            Write-Err "Couldn't remove $target : $($_.Exception.Message)"
         }
-        Write-Ok "Removed $target"
-    } elseif ($state -eq 'missing') {
-        Write-Ok 'Nothing to remove.'
-    } else {
-        Write-Warn "$target is not ours ($state). Left as it is."
     }
 
-    Write-Step 3 3 'Running spicetify apply ...'
-    $null = Invoke-Apply
+    Write-Step 4 5 'Running spicetify apply ...'
+    $applied = $false
+    if ($hasSpicetify) {
+        $applied = Invoke-Apply -Soft
+    } else {
+        Write-Info 'Skipped (Spicetify not found).'
+    }
+
+    Write-Step 5 5 'Checking the result ...'
+    $problems = 0
+    if ($hasSpicetify) {
+        if (Test-InSpicetifyList) {
+            $problems++
+            Write-Err "$FileName is still in Spicetify's list."
+            Write-Info "Next step: run 'spicetify config extensions $FileName-', then 'spicetify apply'."
+        } else {
+            Write-Ok "$FileName is no longer in Spicetify's list."
+        }
+    }
+    $state = Get-TargetState $target
+    if ($state -eq 'missing') {
+        Write-Ok "The file is gone from $extDir"
+    } elseif ($state -eq 'folder') {
+        Write-Warn "A folder named $FileName is still in $extDir. It isn't ours, so it was left."
+    } else {
+        $problems++
+        Write-Err "$FileName is still in $extDir"
+        Write-Info 'Next step: close Spotify and double-click uninstall.cmd again, or delete the file by hand.'
+    }
+    if ($hasSpicetify -and -not $applied) {
+        $problems++
+        Write-Err 'spicetify apply failed, so Spotify still runs the fixes until it works.'
+        Write-Info "Next step: run 'spicetify apply' in a terminal and read the message."
+    }
 
     Write-Host ''
-    Write-Host 'Done. The fixes are switched off.' -ForegroundColor Green
+    if ($problems -gt 0) {
+        Write-Host 'Not finished. Fix the problems above, then double-click uninstall.cmd again.' -ForegroundColor Red
+        exit 1
+    }
+    Write-Host 'Done. The fixes are off, so the bugs come back:' -ForegroundColor Green
+    Write-Info "- With extension entries in the profile menu, the profile menu won't open."
+    Write-Info '- Top-bar buttons from extensions and themes disappear.'
+    Write-Info 'Nothing of spicetify-fixes is left in Spicetify. Only this folder is still there.'
+
+    Write-Host ''
+    Write-LocalChangesWarning
+    if (Read-YesNo 'Open this folder in Explorer so you can delete it?' $false) {
+        Start-Process -FilePath 'explorer.exe' -ArgumentList "/select,`"$RepoDir`""
+        Write-Info "Close this window, then delete the $(Split-Path -Leaf $RepoDir) folder."
+    }
 }
 
 switch ($Action) {

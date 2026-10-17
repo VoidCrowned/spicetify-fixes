@@ -6,6 +6,8 @@
 > It is not a Marketplace extension.
 > Each fix switches itself off on Spicetify versions it wasn't tested on.
 
+To remove it again: double-click `uninstall.cmd`. Details: [Uninstall](#uninstall).
+
 ## What it does
 
 It applies known fixes for Spicetify bugs until Spicetify ships them in a release.
@@ -188,18 +190,91 @@ You should see: Spotify restart with Spicetify back. The fixes come back with it
 
 ## Uninstall
 
-Double-click `uninstall.cmd`.
+`uninstall.cmd` removes everything this repo added to Spicetify.
+It never touches Spicetify itself, other extensions, themes, or this folder's files.
 
-You should see: steps `[1/3]` to `[3/3]`, then `Done. The fixes are switched off.`
+**Steps:**
 
-By hand:
+1. Open the `spicetify-fixes` folder in Explorer.
 
-```sh
-spicetify config extensions spicetifyFixes.js-
-spicetify apply
-```
+2. Double-click `uninstall.cmd`.
 
-Then delete `spicetifyFixes.js` from `<userdata>/Extensions`.
+   You should see: a short list of what will happen, then `Remove spicetify-fixes from Spicetify? [Y/n]`.
+
+3. Press Enter (Enter means yes).
+
+   You should see: steps `[1/5]` to `[5/5]`. Spotify restarts during step 4.
+
+4. Read step 5, the summary.
+
+   You should see: `OK    spicetifyFixes.js is no longer in Spicetify's list.` and `OK    The file is gone from ...`, then what that means: the bugs come back. With extension entries in the profile menu, the menu won't open, and top-bar buttons disappear.
+
+5. Answer `Open this folder in Explorer so you can delete it? [y/N]`.
+   - Want to delete the folder too: type `y` and press Enter.
+
+     You should see: Explorer with the `spicetify-fixes` folder selected. Close the uninstall window, then delete the folder.
+   - Want to keep it: press Enter.
+
+   If the folder has local changes that aren't on GitHub, you see a warning first.
+
+**What's left afterwards:** nothing in Spicetify. Only the `spicetify-fixes` folder, if you keep it.
+
+If you answer `n` to the first question, it stops and nothing changes.
+
+### Uninstall manually (any OS)
+
+1. Take it off Spicetify's list:
+
+   ```sh
+   spicetify config extensions spicetifyFixes.js-
+   ```
+
+2. Check the list:
+
+   ```sh
+   spicetify config extensions
+   ```
+
+   You should see: the other extensions, but not `spicetifyFixes.js`.
+
+3. Find Spicetify's folder:
+
+   ```sh
+   spicetify path userdata
+   ```
+
+   You should see: a folder. `Extensions` is inside it.
+
+4. Delete `spicetifyFixes.js` from that `Extensions` folder. It's a link or a copy; deleting it doesn't touch the repo.
+
+   Windows (PowerShell):
+
+   ```powershell
+   Remove-Item "$(spicetify path userdata)\Extensions\spicetifyFixes.js"
+   ```
+
+   macOS and Linux:
+
+   ```sh
+   rm "$(spicetify path userdata)/Extensions/spicetifyFixes.js"
+   ```
+
+5. Apply:
+
+   ```sh
+   spicetify apply
+   ```
+
+   You should see: green `success` lines and Spotify restart.
+
+6. Optional: delete the `spicetify-fixes` folder.
+
+### Want Spotify without Spicetify entirely?
+
+That's not this repo's job.
+
+- `spicetify restore` returns Spotify to normal and keeps Spicetify's settings.
+- To remove Spicetify itself: https://spicetify.app/docs/advanced-usage/uninstallation
 
 ## Something went wrong?
 
@@ -211,6 +286,11 @@ Then delete `spicetifyFixes.js` from `<userdata>/Extensions`.
 | `__fixes.status()` shows `untested-version` | The bug is still there, but this Spicetify version wasn't tested. The fix stays off. Wait for an update of this repo. |
 | `__fixes.status()` shows `skipped` | Spotify didn't finish loading within 30 s. Restart Spotify and check again. |
 | `__fixes` is not defined | The extension isn't loaded. Run `install.cmd` again and check that step 3 says `OK`. |
+| Uninstall: `Spicetify was not found. Skipping its list and spicetify apply` | Fine if you removed Spicetify already. Only the file was removed. |
+| Uninstall: `Not ours (folder)` | A folder named `spicetifyFixes.js` is in the Extensions folder. It wasn't made by this repo, so it's left. Delete it by hand if you don't need it. |
+| Uninstall: `ERROR ... is still in ...` | Close Spotify, then double-click `uninstall.cmd` again. Or delete the file by hand (see [Uninstall manually](#uninstall-manually-any-os)). |
+| Uninstall: `Not finished.` | Read the `ERROR` lines above it. Each one has a next step. Then run `uninstall.cmd` again. |
+| Uninstall: `local changes that aren't on GitHub` | Files in the folder differ from GitHub. Deleting the folder loses them. Keep them if you need them. |
 
 ## What it fixes
 
