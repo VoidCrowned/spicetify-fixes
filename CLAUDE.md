@@ -29,7 +29,7 @@ If something depends on the live Spotify DOM or Spotify's modules and can't be k
 
 ## README section per fix
 
-Under *What it fixes*, one section titled <title> (`<id>`) with: **What you notice**, **Cause** (one or two plain sentences), **Affected** (versions), **Upstream** (links labelled e.g. "closed, not merged", "fixed on main, not released"), **Stops applying**. Add a matching row to the troubleshooting table if the fix has its own failure mode.
+Under *What it fixes*, one section titled <title> (`<id>`) with: **What you notice**, **Cause** (one or two plain sentences), **Affected** (versions), **Upstream** (links labelled e.g. "closed, not merged", "fixed on main, not released"), **Stops applying**. Add a matching row to the troubleshooting table if the fix has its own failure mode. Add the section to the *Contents* index at the top too. *What it fixes* stays the first section after the warning and the index, because it is what tells a reader whether this repo is for them.
 
 The README is written for an ADHD brain: one action per numbered step, the exact command to copy, and "You should see: ..." after each step.
 

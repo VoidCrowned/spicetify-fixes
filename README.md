@@ -8,10 +8,58 @@
 
 To remove it again: double-click `uninstall.cmd`. Details: [Uninstall](#uninstall).
 
-## What it does
+## Contents
+
+- [What it fixes](#what-it-fixes)
+  - [Profile menu won't open](#profile-menu-wont-open-menuitem-v2)
+  - [Top-bar buttons never appear](#top-bar-buttons-never-appear-topbar-history-class)
+- [Install on Windows, the easy way](#install-on-windows-the-easy-way)
+- [Install manually (any OS)](#install-manually-any-os)
+  - [Windows (PowerShell)](#windows-powershell)
+  - [macOS and Linux](#macos-and-linux)
+- [Updating](#updating)
+- [After Spotify updates itself](#after-spotify-updates-itself)
+- [Uninstall](#uninstall)
+  - [Uninstall manually (any OS)](#uninstall-manually-any-os)
+  - [Want Spotify without Spicetify entirely?](#want-spotify-without-spicetify-entirely)
+- [Something went wrong?](#something-went-wrong)
+- [Licence](#licence)
+
+## What it fixes
 
 It applies known fixes for Spicetify bugs until Spicetify ships them in a release.
 Each fix checks whether its bug is really there before it changes anything.
+
+### Profile menu won't open (`menuitem-v2`)
+
+**What you notice:** clicking your profile picture does nothing. The console shows `cannot be rendered outside a collection`. It happens as soon as any Spicetify or extension entry sits in the profile menu.
+
+**Cause:** on Spotify 1.3.4, Spicetify picks Spotify's newer menu item, which only works inside Spotify's newer menus. Spicetify draws its profile-menu entries inside the older menu, so the whole menu crashes. The fix swaps in Spotify's menu item that works in both.
+
+**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 (verified on 1.3.4.258, 16 Oct 2026).
+
+**Upstream:**
+
+- [spicetify/cli#4012](https://github.com/spicetify/cli/pull/4012): describes exactly this and proposes the same fix (closed, not merged).
+- [spicetify/cli#3965](https://github.com/spicetify/cli/issues/3965): the same wrong lookup on Spotify 1.3.1 (closed as fixed in 2.45.1).
+- [spicetify/marketplace#1248](https://github.com/spicetify/marketplace/issues/1248): possibly related, the profile menu opens only once.
+
+**Stops applying:** when Spicetify picks the right menu item by itself (`not-needed`), or on any Spicetify version other than 2.45.3 (`untested-version`).
+
+### Top-bar buttons never appear (`topbar-history-class`)
+
+**What you notice:** buttons that extensions and themes add to the top bar never show up, e.g. Hazy's pencil.
+
+**Cause:** Spicetify waits for a class on Spotify's back/forward buttons before it adds top-bar buttons. Spicetify 2.45.3 doesn't know that class's new name in Spotify 1.3.4, so it waits forever. The fix adds the class.
+
+**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 (verified on 1.3.4.258).
+
+**Upstream:**
+
+- [spicetify/cli@1684023](https://github.com/spicetify/cli/commit/1684023): fixed on main on 11 Oct 2026, not released as of v2.45.3.
+- No upstream issue: spicetify/cli currently only lets collaborators open issues.
+
+**Stops applying:** when Spotify's buttons already have the class, e.g. after the next Spicetify release (`not-needed`), or on any Spicetify version other than 2.45.3 (`untested-version`).
 
 ## Install on Windows, the easy way
 
@@ -291,39 +339,6 @@ That's not this repo's job.
 | Uninstall: `ERROR ... is still in ...` | Close Spotify, then double-click `uninstall.cmd` again. Or delete the file by hand (see [Uninstall manually](#uninstall-manually-any-os)). |
 | Uninstall: `Not finished.` | Read the `ERROR` lines above it. Each one has a next step. Then run `uninstall.cmd` again. |
 | Uninstall: `local changes that aren't on GitHub` | Files in the folder differ from GitHub. Deleting the folder loses them. Keep them if you need them. |
-
-## What it fixes
-
-### Profile menu won't open (`menuitem-v2`)
-
-**What you notice:** clicking your profile picture does nothing. The console shows `cannot be rendered outside a collection`. It happens as soon as any Spicetify or extension entry sits in the profile menu.
-
-**Cause:** on Spotify 1.3.4, Spicetify picks Spotify's newer menu item, which only works inside Spotify's newer menus. Spicetify draws its profile-menu entries inside the older menu, so the whole menu crashes. The fix swaps in Spotify's menu item that works in both.
-
-**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 (verified on 1.3.4.258, 16 Oct 2026).
-
-**Upstream:**
-
-- [spicetify/cli#4012](https://github.com/spicetify/cli/pull/4012): describes exactly this and proposes the same fix (closed, not merged).
-- [spicetify/cli#3965](https://github.com/spicetify/cli/issues/3965): the same wrong lookup on Spotify 1.3.1 (closed as fixed in 2.45.1).
-- [spicetify/marketplace#1248](https://github.com/spicetify/marketplace/issues/1248): possibly related, the profile menu opens only once.
-
-**Stops applying:** when Spicetify picks the right menu item by itself (`not-needed`), or on any Spicetify version other than 2.45.3 (`untested-version`).
-
-### Top-bar buttons never appear (`topbar-history-class`)
-
-**What you notice:** buttons that extensions and themes add to the top bar never show up, e.g. Hazy's pencil.
-
-**Cause:** Spicetify waits for a class on Spotify's back/forward buttons before it adds top-bar buttons. Spicetify 2.45.3 doesn't know that class's new name in Spotify 1.3.4, so it waits forever. The fix adds the class.
-
-**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 (verified on 1.3.4.258).
-
-**Upstream:**
-
-- [spicetify/cli@1684023](https://github.com/spicetify/cli/commit/1684023): fixed on main on 11 Oct 2026, not released as of v2.45.3.
-- No upstream issue: spicetify/cli currently only lets collaborators open issues.
-
-**Stops applying:** when Spotify's buttons already have the class, e.g. after the next Spicetify release (`not-needed`), or on any Spicetify version other than 2.45.3 (`untested-version`).
 
 ## Licence
 
