@@ -29,12 +29,21 @@ function Write-Step([int]$Number, [int]$Total, [string]$Text) {
 
 function Write-Ok([string]$Text) { Write-Host "  OK    $Text" -ForegroundColor Green }
 function Write-Warn([string]$Text) { Write-Host "  WARN  $Text" -ForegroundColor Yellow }
+function Write-Err([string]$Text) { Write-Host "  ERROR $Text" -ForegroundColor Red }
 function Write-Info([string]$Text) { Write-Host "        $Text" }
 
 function Stop-WithError([string]$Text, [string]$Next) {
-    Write-Host "  ERROR $Text" -ForegroundColor Red
-    Write-Host "        Next step: $Next"
+    Write-Err $Text
+    Write-Info "Next step: $Next"
     exit 1
+}
+
+# Returns $true for yes. An empty answer picks the default.
+function Read-YesNo([string]$Question, [bool]$Default) {
+    $hint = if ($Default) { '[Y/n]' } else { '[y/N]' }
+    $answer = (Read-Host "$Question $hint").Trim()
+    if ($answer -eq '') { return $Default }
+    return $answer -match '^(y|yes)$'
 }
 
 # --- Checks -------------------------------------------------------------------
@@ -51,16 +60,25 @@ function Assert-NotAdmin([string]$Wrapper) {
     }
 }
 
+function Test-Spicetify {
+    return [bool](Get-Command spicetify -ErrorAction SilentlyContinue)
+}
+
 function Assert-Spicetify {
-    if (-not (Get-Command spicetify -ErrorAction SilentlyContinue)) {
+    if (-not (Test-Spicetify)) {
         Stop-WithError 'Spicetify was not found.' "Install Spicetify first: $DocsUrl . Then open a new window and try again."
     }
 }
 
-function Get-ExtensionsDir {
+function Remove-Ansi([string]$Text) {
+    return ($Text -replace "\x1b\[[0-9;]*m", '').Trim()
+}
+
+# With -Soft, returns $null instead of stopping when Spicetify gives no folder.
+function Get-ExtensionsDir([switch]$NoCreate, [switch]$Soft) {
     $userData = $null
     foreach ($line in @(& spicetify path userdata)) {
-        $candidate = ([string]$line -replace "\x1b\[[0-9;]*m", '').Trim()
+        $candidate = Remove-Ansi $line
         if (-not $candidate) { continue }
         try {
             if (Test-Path -LiteralPath $candidate -PathType Container) { $userData = $candidate }
@@ -69,14 +87,39 @@ function Get-ExtensionsDir {
         }
     }
     if (-not $userData) {
+        if ($Soft) { return $null }
         Stop-WithError "'spicetify path userdata' didn't return a folder." "Run 'spicetify path userdata' in a terminal and check that Spicetify works: $DocsUrl"
     }
     $dir = Join-Path $userData 'Extensions'
-    if (-not (Test-Path -LiteralPath $dir)) {
+    if (-not $NoCreate -and -not (Test-Path -LiteralPath $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
         Write-Info "Created $dir"
     }
     return $dir
+}
+
+# Where Spicetify keeps extensions by default, for when Spicetify can't tell us.
+function Get-DefaultExtensionsDir {
+    if ($env:SPICETIFY_CONFIG) { return Join-Path $env:SPICETIFY_CONFIG 'Extensions' }
+    return Join-Path $env:APPDATA 'spicetify\Extensions'
+}
+
+# The names in Spicetify's extensions list, one per line of
+# 'spicetify config extensions'.
+function Get-SpicetifyExtensions {
+    $names = @()
+    foreach ($line in @(& spicetify config extensions)) {
+        $name = Remove-Ansi $line
+        if ($name) { $names += $name }
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Stop-WithError "'spicetify config extensions' failed (exit code $LASTEXITCODE)." "Run 'spicetify config extensions' in a terminal and read the message."
+    }
+    return $names
+}
+
+function Test-InSpicetifyList {
+    return @(Get-SpicetifyExtensions) -contains $FileName
 }
 
 # --- Files and links ----------------------------------------------------------
@@ -89,15 +132,23 @@ function Test-SamePath([string]$A, [string]$B) {
     }
 }
 
+# Where a symlink points, as a full path, or $null.
+function Get-LinkTarget([string]$Path) {
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item -or $item.LinkType -ne 'SymbolicLink') { return $null }
+    $linkTarget = @($item.Target)[0]
+    if ($linkTarget -and -not [IO.Path]::IsPathRooted($linkTarget)) {
+        $linkTarget = Join-Path (Split-Path -Parent $Path) $linkTarget
+    }
+    return $linkTarget
+}
+
 # Returns missing, our-link, other-link, copy or folder.
 function Get-TargetState([string]$Path) {
     $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
     if ($null -eq $item) { return 'missing' }
     if ($item.LinkType -eq 'SymbolicLink') {
-        $linkTarget = @($item.Target)[0]
-        if ($linkTarget -and -not [IO.Path]::IsPathRooted($linkTarget)) {
-            $linkTarget = Join-Path (Split-Path -Parent $Path) $linkTarget
-        }
+        $linkTarget = Get-LinkTarget $Path
         if ($linkTarget -and (Test-SamePath $linkTarget $Source)) { return 'our-link' }
         return 'other-link'
     }
@@ -105,8 +156,10 @@ function Get-TargetState([string]$Path) {
     return 'copy'
 }
 
-# Deletes the file or the link itself, never what a link points to.
+# Deletes the file or the link itself, never what a link points to,
+# and never the repo's own spicetifyFixes.js.
 function Remove-Target([string]$Path) {
+    if (Test-SamePath $Path $Source) { throw "refusing to delete the repo's own $FileName" }
     [IO.File]::Delete($Path)
 }
 
@@ -149,27 +202,33 @@ function Invoke-Spicetify([string[]]$Arguments) {
     return $LASTEXITCODE
 }
 
-function Invoke-Apply {
+# Stops on failure; with -Soft, returns $false instead.
+function Invoke-Apply([switch]$Soft) {
     $code = Invoke-Spicetify @('apply')
     if ($code -eq 0) {
         Write-Ok 'Spicetify applied. Spotify restarts by itself.'
-        return
+        return $true
     }
     Write-Warn "spicetify apply failed (exit code $code)."
     Write-Info 'Trying spicetify backup apply once (the usual fix after a Spotify update) ...'
     $code = Invoke-Spicetify @('backup', 'apply')
     if ($code -eq 0) {
         Write-Ok 'spicetify backup apply worked. Spotify restarts by itself.'
-        return
+        return $true
     }
-    Stop-WithError "spicetify backup apply failed too (exit code $code)." "Read Spicetify's messages above. Often 'spicetify restore backup apply' in a terminal fixes it."
+    $text = "spicetify backup apply failed too (exit code $code)."
+    $next = "Read Spicetify's messages above. Often 'spicetify restore backup apply' in a terminal fixes it."
+    if (-not $Soft) { Stop-WithError $text $next }
+    Write-Err $text
+    Write-Info "Next step: $next"
+    return $false
 }
 
 # --- Actions ------------------------------------------------------------------
 
 function Invoke-LinkOnly {
     if (-not $LinkPath) {
-        Write-Host '  ERROR -LinkPath is missing.' -ForegroundColor Red
+        Write-Err '-LinkPath is missing.'
         exit 1
     }
     $state = Get-TargetState $LinkPath
@@ -177,10 +236,10 @@ function Invoke-LinkOnly {
     if ($state -eq 'copy' -or $state -eq 'other-link') { Remove-Target $LinkPath }
     $result = New-Link $LinkPath
     if ($result -eq 'ok') {
-        Write-Host "  OK    Linked $LinkPath" -ForegroundColor Green
+        Write-Ok "Linked $LinkPath"
         exit 0
     }
-    Write-Host "  ERROR Couldn't create the link: $result" -ForegroundColor Red
+    Write-Err "Couldn't create the link: $result"
     Start-Sleep -Seconds 5
     exit 1
 }
@@ -220,8 +279,7 @@ function Invoke-Install {
         } elseif ($result -eq 'privilege') {
             Write-Warn 'Creating a symlink needs Windows Developer Mode or admin rights.'
             Write-Info 'Developer Mode: Settings > System > For developers. Then no admin prompt is needed.'
-            $answer = Read-Host '        Create the link with an admin prompt? [Y/n]'
-            if ($answer -eq '' -or $answer -match '^(y|yes)$') {
+            if (Read-YesNo '        Create the link with an admin prompt?' $true) {
                 $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Action LinkOnly -LinkPath `"$target`""
                 try {
                     Start-Process -FilePath 'powershell.exe' -Verb RunAs -Wait -ArgumentList $arguments -ErrorAction Stop
@@ -241,14 +299,21 @@ function Invoke-Install {
     }
 
     Write-Step 3 4 "Adding $FileName to Spicetify's extensions ..."
-    $code = Invoke-Spicetify @('config', 'extensions', $FileName)
-    if ($code -ne 0) {
-        Stop-WithError "spicetify config failed (exit code $code)." "Run 'spicetify config extensions $FileName' in a terminal and read the message."
+    if (Test-InSpicetifyList) {
+        Write-Ok "Already in Spicetify's list."
+    } else {
+        $code = Invoke-Spicetify @('config', 'extensions', $FileName)
+        if ($code -ne 0) {
+            Stop-WithError "spicetify config failed (exit code $code)." "Run 'spicetify config extensions $FileName' in a terminal and read the message."
+        }
+        if (-not (Test-InSpicetifyList)) {
+            Stop-WithError "$FileName is still not in Spicetify's list." "Run 'spicetify config extensions $FileName' in a terminal, then 'spicetify config extensions' to check the list."
+        }
+        Write-Ok 'Added.'
     }
-    Write-Ok 'Added.'
 
     Write-Step 4 4 'Running spicetify apply ...'
-    Invoke-Apply
+    $null = Invoke-Apply
 
     Write-Host ''
     Write-Host 'Done. To check it works:' -ForegroundColor Green
@@ -293,7 +358,7 @@ function Invoke-Update {
     }
 
     Write-Step 3 3 'Running spicetify apply ...'
-    Invoke-Apply
+    $null = Invoke-Apply
 
     Write-Host ''
     Write-Host 'Done.' -ForegroundColor Green
@@ -327,7 +392,7 @@ function Invoke-Uninstall {
     }
 
     Write-Step 3 3 'Running spicetify apply ...'
-    Invoke-Apply
+    $null = Invoke-Apply
 
     Write-Host ''
     Write-Host 'Done. The fixes are switched off.' -ForegroundColor Green

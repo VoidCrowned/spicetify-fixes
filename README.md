@@ -130,7 +130,7 @@ Why a symlink and not a copy: then a `git pull` updates the fixes, and `spicetif
    spicetify apply
    ```
 
-   You should see: `Spotify is spiced up!` and Spotify restart.
+   You should see: green `success` lines (e.g. `Refreshed extensions`) and Spotify restart.
 
 ### macOS and Linux
 
@@ -161,7 +161,7 @@ Why a symlink and not a copy: then a `git pull` updates the fixes, and `spicetif
    spicetify apply
    ```
 
-   You should see: `Spotify is spiced up!` and Spotify restart.
+   You should see: green `success` lines (e.g. `Refreshed extensions`) and Spotify restart.
 
 ## Updating
 
