@@ -1,7 +1,7 @@
 # Spicetify Fixes
 
 > [!WARNING]
-> This is my personal fix collection for my own setup: Windows, Spotify 1.3.4, Spicetify 2.45.3.
+> This is my personal fix collection for my own setup: Windows, Spotify 1.3.4 and 1.3.5, Spicetify 2.45.3.
 > There's no support and no guarantee. It may break things. Use it at your own risk.
 > It is not a Marketplace extension.
 > Each fix switches itself off on Spicetify versions it wasn't tested on.
@@ -36,7 +36,7 @@ Each fix checks whether its bug is really there before it changes anything.
 
 **Cause:** on Spotify 1.3.4, Spicetify picks Spotify's newer menu item, which only works inside Spotify's newer menus. Spicetify draws its profile-menu entries inside the older menu, so the whole menu crashes. The fix swaps in Spotify's menu item that works in both.
 
-**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 (verified on 1.3.4.258, 16 Oct 2026).
+**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 and later (verified on 1.3.4.258, 16 Oct 2026, and 1.3.5.3058, 18 Oct 2026).
 
 **Upstream:**
 
@@ -52,7 +52,7 @@ Each fix checks whether its bug is really there before it changes anything.
 
 **Cause:** Spicetify waits for a class on Spotify's back/forward buttons before it adds top-bar buttons. Spicetify 2.45.3 doesn't know that class's new name in Spotify 1.3.4, so it waits forever. The fix adds the class.
 
-**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 (verified on 1.3.4.258).
+**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 and later (verified on 1.3.4.258, and 1.3.5.3058, 18 Oct 2026).
 
 **Upstream:**
 

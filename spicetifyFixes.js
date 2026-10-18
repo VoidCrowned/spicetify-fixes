@@ -212,7 +212,7 @@
         "https://github.com/spicetify/cli/issues/3965",
         "https://github.com/spicetify/marketplace/issues/1248",
       ],
-      // Verified on Spotify 1.3.4.258, 16 Oct 2026.
+      // Verified on Spotify 1.3.4.258, 16 Oct 2026, and 1.3.5.3058, 18 Oct 2026.
       spicetifyVersions: ["2.45.3"],
       waitFor: () => Boolean(window.Spicetify?.ReactComponent?.MenuItem),
       detect() {
@@ -239,7 +239,7 @@
       title: "Top-bar buttons from extensions and themes never appear (e.g. Hazy's pencil)",
       symptom: "Top-bar buttons registered through Spicetify.Topbar.Button never show up.",
       upstream: ["https://github.com/spicetify/cli/commit/1684023"],
-      // Verified on Spotify 1.3.4.258.
+      // Verified on Spotify 1.3.4.258, and 1.3.5.3058, 18 Oct 2026.
       spicetifyVersions: ["2.45.3"],
       waitFor: () => Boolean(historyButton()),
       detect: () => !document.querySelector(`.${HISTORY_CLASS}`) && Boolean(historyButton()),
