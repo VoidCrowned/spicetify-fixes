@@ -1,6 +1,6 @@
 /*
  * Spicetify Fixes
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author:  VoidCrowned
  * Repo:    https://github.com/VoidCrowned/spicetify-fixes
  * Licence: WTFPL v2, see LICENSE
@@ -9,11 +9,13 @@
  *
  * A fix only applies when the running Spicetify version is in its
  * spicetifyVersions list AND detect() says the bug is present right now.
+ * spotifyVerified lists the Spotify builds a fix was checked on; it's
+ * information only, not a gate.
  * Check what happened in the devtools console with __fixes.status().
  */
 (async function spicetifyFixes() {
   "use strict";
-  window.__fixes = { version: "1.0.0", status, fixes: [], originals: {} };
+  window.__fixes = { version: "1.1.0", status, fixes: [], originals: {} };
 
   const TAG = "[spicetify-fixes]";
   const WAIT_MS = 30000;
@@ -24,7 +26,13 @@
     const result = {
       spicetify: window.Spicetify?.Config?.version,
       spotify: window.Spicetify?.Platform?.version,
-      fixes: records.map(({ id, state, detail, error }) => ({ id, state, detail, error })),
+      fixes: records.map(({ id, state, spotifyVerified, detail, error }) => ({
+        id,
+        state,
+        spotifyVerified: spotifyVerified.join(", "),
+        detail,
+        error,
+      })),
     };
     console.log(`${TAG} Spicetify ${result.spicetify ?? "?"}, Spotify ${result.spotify ?? "?"}`);
     console.table(result.fixes);
@@ -197,6 +205,57 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Fix 3: topbar-content-wrapper
+  //
+  // The Marketplace moves its tab bar into .main-topBar-topbarContentWrapper
+  // and retries every 100 ms until that exists. Spicetify 2.45.3's css-map has
+  // no name for Spotify 1.3.5's top bar, so the tab bar stays detached and the
+  // Marketplace is stuck on the last tab you had open. Its CSS also needs
+  // .main-topBar-container, so the "More" dropdown isn't clipped.
+  //
+  // Hooks are Spotify's data-testids: 1.3.5 changed every hashed class of the
+  // top bar. Only adds classes, never moves or creates elements.
+  // ---------------------------------------------------------------------------
+
+  const TOPBAR_WRAPPER = '[data-testid="topbar-content-wrapper"]';
+  const TOPBAR_WRAPPER_CLASS = "main-topBar-topbarContentWrapper";
+  const TOPBAR_CLASSES = [
+    [TOPBAR_WRAPPER, TOPBAR_WRAPPER_CLASS],
+    ['[data-testid="topbar"]', "main-topBar-container"],
+  ];
+  let topbarObserver = null;
+  let topbarFramePending = false;
+
+  function addTopbarClasses() {
+    for (const [selector, className] of TOPBAR_CLASSES) {
+      for (const element of document.querySelectorAll(selector)) {
+        if (!element.classList.contains(className)) element.classList.add(className);
+      }
+    }
+  }
+
+  function scheduleTopbarCheck() {
+    if (topbarFramePending) return;
+    topbarFramePending = true;
+    requestAnimationFrame(() => {
+      topbarFramePending = false;
+      try {
+        addTopbarClasses();
+      } catch (e) {
+        console.warn(TAG, "topbar-content-wrapper: could not keep the classes", e);
+      }
+    });
+  }
+
+  // Spotify may replace the top bar; tag every new copy too.
+  function watchTopbar() {
+    if (topbarObserver) return;
+    const target = document.querySelector(TOPBAR_WRAPPER)?.closest("#main-view") ?? document.body;
+    topbarObserver = new MutationObserver(scheduleTopbarCheck);
+    topbarObserver.observe(target, { childList: true, subtree: true });
+  }
+
+  // ---------------------------------------------------------------------------
   // Fix list
   // ---------------------------------------------------------------------------
 
@@ -214,6 +273,7 @@
       ],
       // Verified on Spotify 1.3.4.258, 16 Oct 2026, and 1.3.5.3058, 18 Oct 2026.
       spicetifyVersions: ["2.45.3"],
+      spotifyVerified: ["1.3.4.258", "1.3.5.3058"],
       waitFor: () => Boolean(window.Spicetify?.ReactComponent?.MenuItem),
       detect() {
         const source = menuItemSource();
@@ -241,12 +301,35 @@
       upstream: ["https://github.com/spicetify/cli/commit/1684023"],
       // Verified on Spotify 1.3.4.258, and 1.3.5.3058, 18 Oct 2026.
       spicetifyVersions: ["2.45.3"],
+      spotifyVerified: ["1.3.4.258", "1.3.5.3058"],
       waitFor: () => Boolean(historyButton()),
       detect: () => !document.querySelector(`.${HISTORY_CLASS}`) && Boolean(historyButton()),
       apply() {
         historyButton().parentElement.classList.add(HISTORY_CLASS);
         watchHistoryButtons();
         return `added .${HISTORY_CLASS} to the history buttons and keeps it there`;
+      },
+    },
+    {
+      id: "topbar-content-wrapper",
+      title: "Marketplace tabs missing",
+      symptom:
+        "The Marketplace shows only the last tab you had open (e.g. Installed). " +
+        "The tab bar is gone and you can't switch tabs.",
+      upstream: [
+        "https://github.com/spicetify/marketplace/issues/1248",
+        "https://github.com/spicetify/marketplace/issues/1264",
+        "https://github.com/spicetify/cli/commit/1684023",
+      ],
+      // Verified on Spotify 1.3.5.3058, 19 Oct 2026.
+      spicetifyVersions: ["2.45.3"],
+      spotifyVerified: ["1.3.5.3058"],
+      waitFor: () => Boolean(document.querySelector(TOPBAR_WRAPPER)),
+      detect: () => !document.querySelector(`.${TOPBAR_WRAPPER_CLASS}`),
+      apply() {
+        addTopbarClasses();
+        watchTopbar();
+        return `added .${TOPBAR_WRAPPER_CLASS} and .main-topBar-container to the top bar and keeps them there`;
       },
     },
   ];
@@ -320,7 +403,14 @@
 
   try {
     for (const fix of FIXES) {
-      records.push({ id: fix.id, title: fix.title, state: "pending", detail: "", error: null });
+      records.push({
+        id: fix.id,
+        title: fix.title,
+        spotifyVerified: fix.spotifyVerified,
+        state: "pending",
+        detail: "",
+        error: null,
+      });
     }
     await Promise.all(FIXES.map((fix, i) => runFix(fix, records[i])));
   } catch (e) {

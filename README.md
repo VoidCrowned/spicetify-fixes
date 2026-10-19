@@ -6,6 +6,8 @@
 > It is not a Marketplace extension.
 > Each fix switches itself off on Spicetify versions it wasn't tested on.
 
+Marketplace stuck on one tab? See [Marketplace tabs missing](#marketplace-tabs-missing-topbar-content-wrapper).
+
 To remove it again: double-click `uninstall.cmd`. Details: [Uninstall](#uninstall).
 
 ## Contents
@@ -13,6 +15,7 @@ To remove it again: double-click `uninstall.cmd`. Details: [Uninstall](#uninstal
 - [What it fixes](#what-it-fixes)
   - [Profile menu won't open](#profile-menu-wont-open-menuitem-v2)
   - [Top-bar buttons never appear](#top-bar-buttons-never-appear-topbar-history-class)
+  - [Marketplace tabs missing](#marketplace-tabs-missing-topbar-content-wrapper)
 - [Install on Windows, the easy way](#install-on-windows-the-easy-way)
 - [Install manually (any OS)](#install-manually-any-os)
   - [Windows (PowerShell)](#windows-powershell)
@@ -36,7 +39,7 @@ Each fix checks whether its bug is really there before it changes anything.
 
 **Cause:** on Spotify 1.3.4, Spicetify picks Spotify's newer menu item, which only works inside Spotify's newer menus. Spicetify draws its profile-menu entries inside the older menu, so the whole menu crashes. The fix swaps in Spotify's menu item that works in both.
 
-**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 and later (verified on 1.3.4.258, 16 Oct 2026, and 1.3.5.3058, 18 Oct 2026).
+**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 and later. Verified on Spotify 1.3.4.258 (16 Oct 2026) and 1.3.5.3058 (18 Oct 2026).
 
 **Upstream:**
 
@@ -52,7 +55,7 @@ Each fix checks whether its bug is really there before it changes anything.
 
 **Cause:** Spicetify waits for a class on Spotify's back/forward buttons before it adds top-bar buttons. Spicetify 2.45.3 doesn't know that class's new name in Spotify 1.3.4, so it waits forever. The fix adds the class.
 
-**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 and later (verified on 1.3.4.258, and 1.3.5.3058, 18 Oct 2026).
+**Affected:** Spicetify 2.45.3 on Spotify 1.3.4 and later. Verified on Spotify 1.3.4.258 and 1.3.5.3058 (18 Oct 2026).
 
 **Upstream:**
 
@@ -60,6 +63,46 @@ Each fix checks whether its bug is really there before it changes anything.
 - No upstream issue: spicetify/cli currently only lets collaborators open issues.
 
 **Stops applying:** when Spotify's buttons already have the class, e.g. after the next Spicetify release (`not-needed`), or on any Spicetify version other than 2.45.3 (`untested-version`).
+
+### Marketplace tabs missing (`topbar-content-wrapper`)
+
+**What you notice:** the Marketplace shows only the last tab you had open, e.g. **Installed**. The tab bar is gone, so you can't switch tabs.
+
+**Cause:** the Marketplace looks for a class name on Spotify's top bar to put its tabs in. Spicetify 2.45.3 doesn't know that class name for Spotify 1.3.5 yet, so the Marketplace never finds a place for its tabs. The fix adds the class names to the top bar.
+
+**Affected:** Spicetify 2.45.3 on Spotify 1.3.5. Verified on Spotify 1.3.5.3058 (19 Oct 2026).
+
+**Upstream:**
+
+- [spicetify/marketplace#1248](https://github.com/spicetify/marketplace/issues/1248): reports this symptom.
+- [spicetify/marketplace#1264](https://github.com/spicetify/marketplace/issues/1264): the same symptom.
+- [spicetify/cli@1684023](https://github.com/spicetify/cli/commit/1684023): adds the class name for Spotify 1.3.4 on main, not released as of v2.45.3. Nothing for 1.3.5 yet (as of 18 Oct 2026).
+
+**Stops applying:** when Spotify's top bar already has the class, e.g. once Spicetify knows it for your Spotify version (`not-needed`), or on any Spicetify version other than 2.45.3 (`untested-version`).
+
+#### Without installing
+
+A one-off workaround. It lasts until Spotify restarts.
+
+1. Copy and run:
+
+   ```
+   spicetify enable-devtools
+   ```
+
+   You should see: Spotify restart.
+
+2. In Spotify, open the Marketplace.
+
+3. Press `Ctrl+Shift+I` and open the **Console** tab.
+
+4. Paste this and press Enter:
+
+   ```js
+   document.querySelector('[data-testid="topbar-content-wrapper"]')?.classList.add("main-topBar-topbarContentWrapper")
+   ```
+
+   You should see: the Marketplace tabs in the top bar.
 
 ## Install on Windows, the easy way
 
@@ -116,16 +159,18 @@ Each fix checks whether its bug is really there before it changes anything.
    You should see something like:
 
    ```
-   [spicetify-fixes] Spicetify 2.45.3, Spotify 1.3.4.258.g...
-   ┌─────────┬────────────────────────┬───────────┬──────────────────────────────┬───────┐
-   │ (index) │ id                     │ state     │ detail                       │ error │
-   ├─────────┼────────────────────────┼───────────┼──────────────────────────────┼───────┤
-   │ 0       │ 'menuitem-v2'          │ 'applied' │ 'Spicetify.ReactComponent... │ null  │
-   │ 1       │ 'topbar-history-class' │ 'applied' │ 'added .main-globalNav-hi... │ null  │
-   └─────────┴────────────────────────┴───────────┴──────────────────────────────┴───────┘
+   [spicetify-fixes] Spicetify 2.45.3, Spotify 1.3.5.3058
+   ┌─────────┬──────────────────────────┬───────────┬─────────────────┬──────────────────────────────┬───────┐
+   │ (index) │ id                       │ state     │ spotifyVerified │ detail                       │ error │
+   ├─────────┼──────────────────────────┼───────────┼─────────────────┼──────────────────────────────┼───────┤
+   │ 0       │ 'menuitem-v2'            │ 'applied' │ '1.3.4.258, ... │ 'Spicetify.ReactComponent... │ null  │
+   │ 1       │ 'topbar-history-class'   │ 'applied' │ '1.3.4.258, ... │ 'added .main-globalNav-hi... │ null  │
+   │ 2       │ 'topbar-content-wrapper' │ 'applied' │ '1.3.5.3058'    │ 'added .main-topBar-topba... │ null  │
+   └─────────┴──────────────────────────┴───────────┴─────────────────┴──────────────────────────────┴───────┘
    ```
 
 `not-needed` is fine too: it means the bug isn't there on your setup.
+`spotifyVerified` is the Spotify build each fix was checked on. Other builds still get the fix.
 
 > [!NOTE]
 > Downloading the repo as a ZIP works too, but Windows may block the scripts.
@@ -255,7 +300,7 @@ It never touches Spicetify itself, other extensions, themes, or this folder's fi
 
 4. Read step 5, the summary.
 
-   You should see: `OK    spicetifyFixes.js is no longer in Spicetify's list.` and `OK    The file is gone from ...`, then what that means: the bugs come back. With extension entries in the profile menu, the menu won't open, and top-bar buttons disappear.
+   You should see: `OK    spicetifyFixes.js is no longer in Spicetify's list.` and `OK    The file is gone from ...`, then what that means: the bugs come back. With extension entries in the profile menu, the menu won't open, top-bar buttons disappear, and the Marketplace tabs go missing.
 
 5. Answer `Open this folder in Explorer so you can delete it? [y/N]`.
    - Want to delete the folder too: type `y` and press Enter.

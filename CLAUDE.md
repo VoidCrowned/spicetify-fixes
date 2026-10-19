@@ -14,12 +14,13 @@ A personal Spicetify CLI extension that applies known fixes for Spicetify bugs u
 
 ## Adding a fix
 
-1. Add an entry to `FIXES` with every field: `id`, `title`, `symptom`, `upstream` (array of URLs), `spicetifyVersions`, `waitFor()`, `detect()`, `apply()`.
-2. `spicetifyVersions` lists only Spicetify versions you verified the fix on. Note the Spotify version and date in a comment.
+1. Add an entry to `FIXES` with every field: `id`, `title`, `symptom`, `upstream` (array of URLs), `spicetifyVersions`, `spotifyVerified`, `waitFor()`, `detect()`, `apply()`.
+2. `spicetifyVersions` lists only Spicetify versions you verified the fix on. `spotifyVerified` lists the Spotify builds (e.g. `1.3.5.3058`) you verified it on; it's shown in `status()` and the README, and is information only, never a gate. Note the date in a comment.
 3. `detect()` returns true only while the bug is present right now, and false once it's gone (upstream fix, Spotify update, or after `apply()`). The runner relies on that to report `not-needed` and `failed`.
 4. Never throw out of the IIFE. The runner isolates each fix in try/catch; helpers outside it (observers, listeners) catch their own errors.
 5. Use `window.Spicetify?.x`, never bare `Spicetify?.x`.
-6. Add the README section (see below).
+6. Hook into Spotify's DOM through its `data-testid` attributes, not hashed class names. Hashes change with every Spotify build (1.3.4 to 1.3.5 changed all of the top bar's). Use a hash only when no test ID exists, and then list it per Spotify build.
+7. Add the README section (see below).
 
 If something depends on the live Spotify DOM or Spotify's modules and can't be known from this repo, give the maintainer a devtools console snippet to verify it instead of guessing. Facts already verified (in the fix comments and README) are not re-derived.
 
@@ -29,7 +30,7 @@ If something depends on the live Spotify DOM or Spotify's modules and can't be k
 
 ## README section per fix
 
-Under *What it fixes*, one section titled <title> (`<id>`) with: **What you notice**, **Cause** (one or two plain sentences), **Affected** (versions), **Upstream** (links labelled e.g. "closed, not merged", "fixed on main, not released"), **Stops applying**. Add a matching row to the troubleshooting table if the fix has its own failure mode. Add the section to the *Contents* index at the top too. *What it fixes* stays the first section after the warning and the index, because it is what tells a reader whether this repo is for them.
+Under *What it fixes*, one section titled <title> (`<id>`) with: **What you notice**, **Cause** (one or two plain sentences), **Affected** (versions, including the `spotifyVerified` builds), **Upstream** (links labelled e.g. "closed, not merged", "fixed on main, not released"), **Stops applying**. Add a matching row to the troubleshooting table if the fix has its own failure mode. Add the section to the *Contents* index at the top too. *What it fixes* stays the first section after the warning and the index, because it is what tells a reader whether this repo is for them.
 
 The README is written for an ADHD brain: one action per numbered step, the exact command to copy, and "You should see: ..." after each step.
 

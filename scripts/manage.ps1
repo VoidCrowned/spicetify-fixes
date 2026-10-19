@@ -483,6 +483,7 @@ function Invoke-Uninstall {
     Write-Host 'Done. The fixes are off, so the bugs come back:' -ForegroundColor Green
     Write-Info "- With extension entries in the profile menu, the profile menu won't open."
     Write-Info '- Top-bar buttons from extensions and themes disappear.'
+    Write-Info '- The Marketplace tab bar goes missing.'
     Write-Info 'Nothing of spicetify-fixes is left in Spicetify. Only this folder is still there.'
 
     Write-Host ''
