@@ -74,8 +74,8 @@ Each fix checks whether its bug is really there before it changes anything.
 
 **Upstream:**
 
-- [spicetify/marketplace#1248](https://github.com/spicetify/marketplace/issues/1248): reports this symptom.
-- [spicetify/marketplace#1264](https://github.com/spicetify/marketplace/issues/1264): the same symptom.
+- [spicetify/marketplace#1248](https://github.com/spicetify/marketplace/issues/1248): the Marketplace stuck on one tab, with other top-bar problems (closed, not planned).
+- [spicetify/marketplace#1264](https://github.com/spicetify/marketplace/issues/1264): the tab buttons missing, on Spotify 1.3.3 (closed as completed, 18 Oct 2026).
 - [spicetify/cli@1684023](https://github.com/spicetify/cli/commit/1684023): adds the class name for Spotify 1.3.4 on main, not released as of v2.45.3. Nothing for 1.3.5 yet (as of 18 Oct 2026).
 
 **Stops applying:** when Spotify's top bar already has the class, e.g. once Spicetify knows it for your Spotify version (`not-needed`), or on any Spicetify version other than 2.45.3 (`untested-version`).
